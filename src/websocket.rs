@@ -216,6 +216,7 @@ pub fn check_ws(endpoint: &str) -> String {
 
     let custom_rendezvous_server = Config::get_rendezvous_server();
     let relay_server = Config::get_option(OPTION_RELAY_SERVER);
+    
     let rendezvous_port = split_host_port(&custom_rendezvous_server)
         .map(|(_, p)| p)
         .unwrap_or(RENDEZVOUS_PORT);
@@ -224,30 +225,38 @@ pub fn check_ws(endpoint: &str) -> String {
         .unwrap_or(RELAY_PORT);
 
     let (relay, dst_port) = if endpoint_port == rendezvous_port {
-        // rendezvous
         (false, endpoint_port + 2)
     } else if endpoint_port == rendezvous_port - 1 {
-        // online
         (false, endpoint_port + 3)
     } else if endpoint_port == relay_port || endpoint_port == rendezvous_port + 1 {
-        // relay
-        // https://github.com/rustdesk/rustdesk/blob/6ffbcd1375771f2482ec4810680623a269be70f1/src/rendezvous_mediator.rs#L615
-        // https://github.com/rustdesk/rustdesk-server/blob/235a3c326ceb665e941edb50ab79faa1208f7507/src/relay_server.rs#L83, based on relay port.
         (true, endpoint_port + 2)
     } else {
-        // fallback relay
-        // for controlling side, relay server is passed from the controlled side, not related to local config.
         (true, endpoint_port + 2)
     };
+
+    let domain_path = if relay { "/ws/relay" } else { "/ws/id" };
+
+    let api_server = Config::get_option("api-server");
+    if api_server.starts_with("https://") {
+        let api_clean = api_server.trim_start_matches("https://");
+        let api_authority = api_clean.split('/').next().unwrap_or(api_clean);
+        
+        let api_port = split_host_port(api_authority)
+            .map(|(_, p)| p)
+            .unwrap_or(443);
+
+        if crate::is_ip_str(endpoint) {
+             return format!("wss://{}:{}{}", endpoint_host, api_port, domain_path);
+        }
+    }
 
     let (address, is_domain) = if crate::is_ip_str(endpoint) {
         (format!("{}:{}", endpoint_host, dst_port), false)
     } else {
-        let domain_path = if relay { "/ws/relay" } else { "/ws/id" };
         (format!("{}{}", endpoint_host, domain_path), true)
     };
+
     let protocol = if is_domain {
-        let api_server = Config::get_option("api-server");
         if api_server.starts_with("https") {
             "wss"
         } else {
@@ -256,6 +265,7 @@ pub fn check_ws(endpoint: &str) -> String {
     } else {
         "ws"
     };
+
     format!("{}://{}", protocol, address)
 }
 
