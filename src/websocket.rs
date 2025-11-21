@@ -36,6 +36,7 @@ impl WsFramedStream {
         ms_timeout: u64,
     ) -> ResultType<Self> {
         let url_str = url.as_ref();
+        log::info!("DEBUG_WSS: Attempting to connect to WebSocket: '{}'", url_str);
 
         // to-do: websocket proxy.
 
@@ -197,6 +198,8 @@ pub fn is_ws_endpoint(endpoint: &str) -> bool {
  * @return The converted WebSocket endpoint
  */
 pub fn check_ws(endpoint: &str) -> String {
+    log::info!("DEBUG_WSS: check_ws called for endpoint: '{}'", endpoint);
+
     if !use_ws() {
         return endpoint.to_string();
     }
@@ -237,16 +240,18 @@ pub fn check_ws(endpoint: &str) -> String {
     let domain_path = if relay { "/ws/relay" } else { "/ws/id" };
 
     let api_server = Config::get_option("api-server");
+    log::info!("DEBUG_WSS: api_server config value: '{}'", api_server);
+
     if api_server.starts_with("https://") {
         let api_clean = api_server.trim_start_matches("https://");
         let api_authority = api_clean.split('/').next().unwrap_or(api_clean);
         
-        let api_port = split_host_port(api_authority)
-            .map(|(_, p)| p)
-            .unwrap_or(443);
-
-        if crate::is_ip_str(endpoint) {
-             return format!("wss://{}:{}{}", endpoint_host, api_port, domain_path);
+        if let Some((_, api_port)) = split_host_port(api_authority) {
+            let result = format!("wss://{}:{}{}", endpoint_host, api_port, domain_path);
+            log::info!("DEBUG_WSS: FORCED URL generated: '{}'", result);
+            return result;
+        } else {
+            log::error!("DEBUG_WSS: Failed to extract port from api_authority: '{}'", api_authority);
         }
     }
 
@@ -266,7 +271,9 @@ pub fn check_ws(endpoint: &str) -> String {
         "ws"
     };
 
-    format!("{}://{}", protocol, address)
+    let final_url = format!("{}://{}", protocol, address);
+    log::info!("DEBUG_WSS: Standard URL generated: '{}'", final_url);
+    final_url
 }
 
 #[cfg(test)]
