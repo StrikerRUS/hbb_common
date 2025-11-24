@@ -754,6 +754,7 @@ impl Config {
 
     pub fn get_rendezvous_servers() -> Vec<String> {
         let s = EXE_RENDEZVOUS_SERVER.read().unwrap().clone();
+        log::info!("DEBUG_CONFIG: EXE_SERVER: '{}'", s);
         if !s.is_empty() {
             return vec![s];
         }
@@ -776,6 +777,7 @@ impl Config {
                 return ss;
             }
         }
+        log::info!("DEBUG_CONFIG: Returning default servers");
         return RENDEZVOUS_SERVERS.iter().map(|x| x.to_string()).collect();
     }
 
@@ -2408,8 +2410,8 @@ pub fn option2bool(option: &str, value: &str) -> bool {
 }
 
 pub fn use_ws() -> bool {
-    let option = keys::OPTION_ALLOW_WEBSOCKET;
-    option2bool(option, &Config::get_option(option))
+    log::info!("DEBUG_CONFIG: use_ws() called. Returning TRUE.");
+    true
 }
 
 pub mod keys {

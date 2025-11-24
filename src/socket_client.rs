@@ -129,12 +129,18 @@ pub async fn connect_tcp<
     target: T,
     ms_timeout: u64,
 ) -> ResultType<crate::Stream> {
+    log::info!("DEBUG_SOCKET: connect_tcp called for target: '{}'", target_str);
     let target_str = check_ws(&target.to_string());
+    log::info!("DEBUG_SOCKET: check_ws returned: '{}'", target_ws);
     if is_ws_endpoint(&target_str) {
-        return Ok(Stream::WebSocket(
-            websocket::WsFramedStream::new(target_str, None, None, ms_timeout).await?,
-        ));
+        log::info!("DEBUG_SOCKET: Detected WS endpoint, calling WsFramedStream::new");
+        let res = Stream::WebSocket(
+            websocket::WsFramedStream::new(target_ws, None, None, ms_timeout).await?,
+        );
+        log::info!("DEBUG_SOCKET: WS connection established successfully");
+        return Ok(res);
     }
+    log::info!("DEBUG_SOCKET: Not WS, falling back to connect_tcp_local");
     connect_tcp_local(target, None, ms_timeout).await
 }
 
